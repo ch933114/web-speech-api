@@ -16,7 +16,7 @@ function startSTT() {
   recognition = new SR()
   recognition.lang = 'zh-TW'
   recognition.interimResults = true
-  recognition.continuous = false
+  recognition.continuous = true
 
   recognition.onstart = () => {
     sttListening.value = true
