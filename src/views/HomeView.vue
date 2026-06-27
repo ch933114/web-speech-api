@@ -11,7 +11,6 @@ const sttInterim = ref('')
 const sttListening = ref(false)
 const sttError = ref('')
 
-// 🧠 核心控制變數
 let recognition = null
 let shouldKeepListening = false
 let restartTimer = null
@@ -30,36 +29,33 @@ function createRecognition() {
   }
 
   rec.onresult = (e) => {
-    let final = ''
     let interim = ''
 
-    for (const r of e.results) {
-      if (r.isFinal) {
-        final += r[0].transcript
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        sttTranscript.value += e.results[i][0].transcript
       } else {
-        interim += r[0].transcript
+        interim += e.results[i][0].transcript
       }
     }
 
-    if (final) sttTranscript.value += final
     sttInterim.value = interim
   }
 
   rec.onerror = (e) => {
-    sttError.value = e.error
+    if (e.error !== 'no-speech') sttError.value = e.error
   }
 
   rec.onend = () => {
     sttListening.value = false
     sttInterim.value = ''
 
-    // 🚀 自動重啟核心邏輯
     if (shouldKeepListening) {
       clearTimeout(restartTimer)
-
       restartTimer = setTimeout(() => {
+        recognition = createRecognition()
         try {
-          rec.start()
+          recognition.start()
         } catch (e) {
           console.warn('STT restart failed:', e)
         }
@@ -72,11 +68,7 @@ function createRecognition() {
 
 function startSTT() {
   shouldKeepListening = true
-
-  if (!recognition) {
-    recognition = createRecognition()
-  }
-
+  recognition = createRecognition()
   try {
     recognition.start()
   } catch (e) {
@@ -87,7 +79,6 @@ function startSTT() {
 function stopSTT() {
   shouldKeepListening = false
   clearTimeout(restartTimer)
-
   recognition?.stop()
 }
 
@@ -97,7 +88,7 @@ function clearSTT() {
   sttError.value = ''
 }
 
-// ── TTS（未改）──────────────────────────────────────────────────────────────
+// ── TTS ──────────────────────────────────────────────────────────────────────
 const ttsSupported = computed(() => 'speechSynthesis' in window)
 const ttsText = ref('你好，這是語音合成測試。Hello, this is a TTS test.')
 const ttsSpeaking = ref(false)
@@ -162,7 +153,6 @@ function stopTTS() {
 onUnmounted(() => {
   shouldKeepListening = false
   clearTimeout(restartTimer)
-
   recognition?.stop()
   speechSynthesis.cancel()
 })
