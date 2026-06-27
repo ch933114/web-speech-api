@@ -5,44 +5,89 @@ import { ref, computed, onUnmounted } from 'vue'
 const sttSupported = computed(
   () => 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window,
 )
+
 const sttTranscript = ref('')
 const sttInterim = ref('')
 const sttListening = ref(false)
 const sttError = ref('')
+
+// 🧠 核心控制變數
 let recognition = null
+let shouldKeepListening = false
+let restartTimer = null
 
-function startSTT() {
+function createRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-  recognition = new SR()
-  recognition.lang = 'zh-TW'
-  recognition.interimResults = true
-  recognition.continuous = true
+  const rec = new SR()
 
-  recognition.onstart = () => {
+  rec.lang = 'zh-TW'
+  rec.interimResults = true
+  rec.continuous = true
+
+  rec.onstart = () => {
     sttListening.value = true
     sttError.value = ''
-    sttInterim.value = ''
   }
-  recognition.onresult = (e) => {
-    let final = '',
-      interim = ''
+
+  rec.onresult = (e) => {
+    let final = ''
+    let interim = ''
+
     for (const r of e.results) {
-      r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript)
+      if (r.isFinal) {
+        final += r[0].transcript
+      } else {
+        interim += r[0].transcript
+      }
     }
+
     if (final) sttTranscript.value += final
     sttInterim.value = interim
   }
-  recognition.onerror = (e) => {
+
+  rec.onerror = (e) => {
     sttError.value = e.error
   }
-  recognition.onend = () => {
+
+  rec.onend = () => {
     sttListening.value = false
     sttInterim.value = ''
+
+    // 🚀 自動重啟核心邏輯
+    if (shouldKeepListening) {
+      clearTimeout(restartTimer)
+
+      restartTimer = setTimeout(() => {
+        try {
+          rec.start()
+        } catch (e) {
+          console.warn('STT restart failed:', e)
+        }
+      }, 200)
+    }
   }
-  recognition.start()
+
+  return rec
+}
+
+function startSTT() {
+  shouldKeepListening = true
+
+  if (!recognition) {
+    recognition = createRecognition()
+  }
+
+  try {
+    recognition.start()
+  } catch (e) {
+    console.warn('start error:', e)
+  }
 }
 
 function stopSTT() {
+  shouldKeepListening = false
+  clearTimeout(restartTimer)
+
   recognition?.stop()
 }
 
@@ -52,7 +97,7 @@ function clearSTT() {
   sttError.value = ''
 }
 
-// ── TTS ──────────────────────────────────────────────────────────────────────
+// ── TTS（未改）──────────────────────────────────────────────────────────────
 const ttsSupported = computed(() => 'speechSynthesis' in window)
 const ttsText = ref('你好，這是語音合成測試。Hello, this is a TTS test.')
 const ttsSpeaking = ref(false)
@@ -66,11 +111,13 @@ const ttsError = ref('')
 function loadVoices() {
   const voices = speechSynthesis.getVoices()
   ttsVoices.value = voices
+
   if (!ttsSelectedVoice.value && voices.length) {
     const preferred = voices.find((v) => v.lang.startsWith('zh')) || voices[0]
     ttsSelectedVoice.value = preferred.name
   }
 }
+
 if (ttsSupported.value) {
   loadVoices()
   speechSynthesis.onvoiceschanged = loadVoices
@@ -78,24 +125,32 @@ if (ttsSupported.value) {
 
 function speak() {
   if (!ttsText.value.trim()) return
+
   speechSynthesis.cancel()
+
   const utter = new SpeechSynthesisUtterance(ttsText.value)
+
   const voice = ttsVoices.value.find((v) => v.name === ttsSelectedVoice.value)
   if (voice) utter.voice = voice
+
   utter.rate = ttsRate.value
   utter.pitch = ttsPitch.value
   utter.volume = ttsVolume.value
+
   utter.onstart = () => {
     ttsSpeaking.value = true
     ttsError.value = ''
   }
+
   utter.onend = () => {
     ttsSpeaking.value = false
   }
+
   utter.onerror = (e) => {
     ttsError.value = e.error
     ttsSpeaking.value = false
   }
+
   speechSynthesis.speak(utter)
 }
 
@@ -105,6 +160,9 @@ function stopTTS() {
 }
 
 onUnmounted(() => {
+  shouldKeepListening = false
+  clearTimeout(restartTimer)
+
   recognition?.stop()
   speechSynthesis.cancel()
 })
