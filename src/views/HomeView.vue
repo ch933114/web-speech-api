@@ -31,14 +31,14 @@ function createRecognition() {
     let interim = ''
 
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) {
-        if (!processedIndices.has(i)) {
-          // ← 用 Set 判斷是否已處理
-          processedIndices.add(i)
-          sttTranscript.value += e.results[i][0].transcript
-        }
+      const result = e.results[i]
+      const text = result[0].transcript
+
+      if (result.isFinal) {
+        // 🔥 只追加「真正 final 的文字」
+        sttTranscript.value += text + ' '
       } else {
-        interim += e.results[i][0].transcript
+        interim += text
       }
     }
 
