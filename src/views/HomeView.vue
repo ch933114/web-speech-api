@@ -12,6 +12,7 @@ const sttListening = ref(false)
 const sttError = ref('')
 
 let recognition = null
+let finalIndex = 0
 
 function createRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -31,7 +32,10 @@ function createRecognition() {
 
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        sttTranscript.value += e.results[i][0].transcript
+        if (i >= finalIndex) {
+          sttTranscript.value += e.results[i][0].transcript
+          finalIndex = i + 1
+        }
       } else {
         interim += e.results[i][0].transcript
       }
@@ -53,6 +57,7 @@ function createRecognition() {
 }
 
 function startSTT() {
+  finalIndex = 0
   recognition = createRecognition()
   try {
     recognition.start()
