@@ -20,7 +20,7 @@ function createRecognition() {
 
   rec.lang = 'zh-TW'
   rec.interimResults = true
-  rec.continuous = true
+  rec.continuous = false
 
   rec.onstart = () => {
     sttListening.value = true
