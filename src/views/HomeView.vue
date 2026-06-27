@@ -12,8 +12,6 @@ const sttListening = ref(false)
 const sttError = ref('')
 
 let recognition = null
-let shouldKeepListening = false
-let restartTimer = null
 
 function createRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -49,25 +47,12 @@ function createRecognition() {
   rec.onend = () => {
     sttListening.value = false
     sttInterim.value = ''
-
-    if (shouldKeepListening) {
-      clearTimeout(restartTimer)
-      restartTimer = setTimeout(() => {
-        recognition = createRecognition()
-        try {
-          recognition.start()
-        } catch (e) {
-          console.warn('STT restart failed:', e)
-        }
-      }, 200)
-    }
   }
 
   return rec
 }
 
 function startSTT() {
-  shouldKeepListening = true
   recognition = createRecognition()
   try {
     recognition.start()
@@ -77,8 +62,6 @@ function startSTT() {
 }
 
 function stopSTT() {
-  shouldKeepListening = false
-  clearTimeout(restartTimer)
   recognition?.stop()
 }
 
@@ -151,8 +134,6 @@ function stopTTS() {
 }
 
 onUnmounted(() => {
-  shouldKeepListening = false
-  clearTimeout(restartTimer)
   recognition?.stop()
   speechSynthesis.cancel()
 })
@@ -202,7 +183,6 @@ onUnmounted(() => {
       <template v-else>
         <textarea v-model="ttsText" class="textarea" rows="3" placeholder="輸入要朗讀的文字…" />
 
-        <!-- Voice selector -->
         <label class="label">語音</label>
         <select v-model="ttsSelectedVoice" class="select">
           <option v-for="v in ttsVoices" :key="v.name" :value="v.name">
@@ -210,7 +190,6 @@ onUnmounted(() => {
           </option>
         </select>
 
-        <!-- Sliders -->
         <div class="sliders">
           <label class="label"
             >速率 <b>{{ ttsRate }}</b></label
@@ -302,7 +281,6 @@ onUnmounted(() => {
   letter-spacing: 0.06em;
 }
 
-/* Buttons */
 .row {
   display: flex;
   align-items: center;
@@ -350,7 +328,6 @@ onUnmounted(() => {
   background: #374161;
 }
 
-/* Badges */
 .badge {
   font-size: 0.75rem;
   font-weight: 700;
@@ -376,7 +353,6 @@ onUnmounted(() => {
   }
 }
 
-/* Transcript */
 .transcript-box {
   min-height: 80px;
   background: #0f1117;
@@ -397,7 +373,6 @@ onUnmounted(() => {
   color: #4a5270;
 }
 
-/* Forms */
 .textarea {
   width: 100%;
   background: #0f1117;
